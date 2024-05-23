@@ -1,6 +1,12 @@
-import { TypeRegistry } from '@polkadot/types';
-import { getSpecTypes } from '@polkadot/types-known';
-import { createMetadata } from '@substrate/txwrapper/lib/util/metadata';
+import { TypeRegistry } from "@polkadot/types";
+import { getSpecTypes } from "@polkadot/types-known";
+import { createMetadata } from "@substrate/txwrapper-core";
+import {
+  API_RPC,
+  API_EXTENSIONS,
+  API_TYPES,
+  SIGNED_EXTENSIONS,
+} from "../../types";
 
 /**
  * A registry class that stores the types, metadata and chain information.
@@ -11,19 +17,22 @@ export default class Registry {
 
     const registry = new TypeRegistry();
     registry.setChainProperties(
-      registry.createType('ChainProperties', chainInfo.properties),
+      registry.createType("ChainProperties", chainInfo.properties)
     );
 
     registry.setKnownTypes({
-      types,
+      typesBundle: types,
     });
+
+    registry.setSignedExtensions(SIGNED_EXTENSIONS, API_EXTENSIONS);
+
     registry.register(
       getSpecTypes(
         registry,
         chainInfo.name,
         chainInfo.specName,
-        chainInfo.specVersion,
-      ),
+        chainInfo.specVersion
+      )
     );
 
     registry.setMetadata(createMetadata(registry, metadata));
@@ -44,5 +53,8 @@ export default class Registry {
 
   get chainInfo() {
     return this._chainInfo;
+  }
+  get createType() {
+    return this._registry.createType.bind(this._registry);
   }
 }

@@ -1,6 +1,6 @@
 request_funds(1){
   find_account{
-    currency = {"symbol":"DCK", "decimals":6};
+    currency = {"symbol":"AVAIL", "decimals":18};
     random_account = find_balance({
       "minimum_balance":{
         "value": "0",
@@ -44,7 +44,7 @@ create_account(1){
 transfer(1){
   transfer{
     transfer.network = {"network":"Development Node", "blockchain":"Substrate"};
-    currency = {"symbol":"DCK", "decimals":6};
+    currency = {"symbol":"AVAIL", "decimals":18};
     sender = find_balance({
       "minimum_balance":{
         "value": "1000",

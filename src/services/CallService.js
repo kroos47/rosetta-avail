@@ -1,20 +1,14 @@
-import {
-  hexToU8a,
-} from '@polkadot/util';
+import { hexToU8a } from "@polkadot/util";
 
-import {
-  methods,
-} from '@substrate/txwrapper';
+import { methods } from "@substrate/txwrapper-core";
 
 import {
   ERROR_PARSE_INTENT,
   ERROR_POLKADOT_ERROR,
   throwError,
-} from '../helpers/error-types';
+} from "../helpers/error-types";
 
-import {
-  getNetworkApiFromRequest,
-} from '../helpers/connections';
+import { getNetworkApiFromRequest } from "../helpers/connections";
 
 /* Data API: Call */
 
@@ -29,10 +23,10 @@ const call = async (params) => {
   const { callRequest } = params;
   const { method, parameters } = callRequest;
   const api = await getNetworkApiFromRequest(callRequest);
-  const methodSplit = method.split('.');
+  const methodSplit = method.split(".");
   const methodType = methodSplit[0];
-  const isQuery = methodType === 'query';
-  const isTransaction = methodType === 'tx';
+  const isQuery = methodType === "query";
+  const isTransaction = methodType === "tx";
 
   // Get method function from string
   let methodFn = isTransaction ? methods : api[methodType];
@@ -53,8 +47,9 @@ const call = async (params) => {
 
   // Try to execute the extrinsic or query
   try {
-    const extrinsic = (blockHash && isQuery) ? methodFn.at(blockHash) : methodFn(...args);
-    const isPromise = typeof extrinsic.then === 'function';
+    const extrinsic =
+      blockHash && isQuery ? methodFn.at(blockHash) : methodFn(...args);
+    const isPromise = typeof extrinsic.then === "function";
     if (isQuery || isPromise) {
       const result = (await extrinsic).toJSON();
       return {
@@ -64,11 +59,7 @@ const call = async (params) => {
     }
     // Check if signature, if so, add it
     if (signature && signer) {
-      extrinsic.addSignature(
-        signer,
-        hexToU8a(signature),
-        signingPayload,
-      );
+      extrinsic.addSignature(signer, hexToU8a(signature), signingPayload);
     }
 
     // Try to submit the extrinsic

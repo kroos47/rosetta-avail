@@ -1,24 +1,25 @@
-const types = require('../polkadot-types.json');
-const metadata = require('./metadata/devnode-metadata.json');
+const types = require("../polkadot-types.json");
+const types1 = require("../types");
+const metadata = require("./metadata/devnode-metadata.json");
 
 module.exports = {
-  blockchain: 'Substrate',
-  network: 'Development Node',
-  nodeAddress: 'ws://localhost:9944',
+  blockchain: "Avail",
+  network: "Development Node",
+  nodeAddress: "ws://localhost:9944",
   ss58Format: 42,
   properties: {
     ss58Format: 42,
-    tokenDecimals: 6,
-    tokenSymbol: 'DCK',
+    tokenDecimals: 18,
+    tokenSymbol: "AVAIL",
     poaModule: {
-      treasury: '5EYCAe5d818kja8P5YikNggRz4KxztMtMhxP6qSTw7Bwahwq',
+      treasury: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
     },
   },
-  genesis: '0xbae7b59e8d0ef61db70861f49f31e0c6145cb8c33836e2ea2fb4390996cdb174',
-  name: 'Development',
-  specName: 'dock-main-runtime',
+  genesis: "0xb4073ef63d06cb72c56527f8f53e9584c52b86ef9983321f909869800c95e3d8",
+  name: "Development",
+  specName: "avail",
   // Next 2 fields need to change whenever they change on the chain.
-  specVersion: 12,
+  specVersion: 30,
   transactionVersion: 1,
   types,
   metadataRpc: metadata.metadataRpc,

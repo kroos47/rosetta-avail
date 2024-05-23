@@ -1,39 +1,38 @@
-import RosettaSDK from 'rosetta-node-sdk';
-import BN from 'bn.js';
+import RosettaSDK from "rosetta-node-sdk";
+import BN from "bn.js";
 
-import {
-  decode,
-  getTxHash,
-} from '@substrate/txwrapper';
+import { decode, getTxHash, deriveAddress } from "@substrate/txwrapper-core";
 
-import {
-  u8aToHex,
-  hexToU8a,
-  u8aConcat,
-} from '@polkadot/util';
+import { methods } from "../helpers/connections";
+import Registry from "../offline-signing/registry";
 
-import {
-  signatureVerify,
-  decodeAddress,
-} from '@polkadot/util-crypto';
+import { u8aToHex, hexToU8a, u8aConcat } from "@polkadot/util";
 
-import { EXTRINSIC_VERSION } from '@polkadot/types/extrinsic/v4/Extrinsic';
+import { signatureVerify, decodeAddress } from "@polkadot/util-crypto";
+
+import { EXTRINSIC_VERSION } from "@polkadot/types/extrinsic/v4/Extrinsic";
+
+import { signWith } from "../helpers/connections";
+
+import { Keyring } from "@polkadot/api";
 
 import {
   ERROR_BROADCAST_TRANSACTION,
   throwError,
-} from '../helpers/error-types';
+} from "../helpers/error-types";
 
-import { publicKeyToAddress } from '../helpers/crypto';
+import { publicKeyToAddress } from "../helpers/crypto";
 
 import {
   getNetworkApiFromRequest,
   getNetworkRegistryFromRequest,
   getNetworkCurrencyFromRequest,
   getNetworkIdentifierFromRequest,
-} from '../helpers/connections';
+  getRegistry,
+} from "../helpers/connections";
 
-import buildTransferTxn from '../offline-signing/txns';
+import buildTransferTxn from "../offline-signing/txns";
+import { API_EXTENSIONS, SIGNED_EXTENSIONS } from "../../types";
 
 const Types = RosettaSDK.Client;
 
@@ -52,16 +51,16 @@ function jsonToTx(transaction, options = {}) {
   });
 
   const extrinsic = options.registry.registry.createType(
-    'Extrinsic',
+    "Extrinsic",
     unsignedTxn,
-    { version: EXTRINSIC_VERSION, ...unsignedTxn },
+    { version: EXTRINSIC_VERSION, ...unsignedTxn }
   );
 
   if (txParams.signature) {
     extrinsic.addSignature(
       txParams.signer,
       hexToU8a(txParams.signature),
-      signingPayload,
+      signingPayload
     );
   }
 
@@ -112,11 +111,16 @@ const constructionMetadata = async (params) => {
 const constructionSubmit = async (params) => {
   const { constructionSubmitRequest } = params;
   const api = await getNetworkApiFromRequest(constructionSubmitRequest);
+  const meta = await api.rpc.state.getMetadata();
   const signedTxHex = constructionSubmitRequest.signed_transaction;
+
   const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
+  // const registry = getRegistry(meta.toHex());
   const nonce = (
     await api.query.system.account(JSON.parse(signedTxHex).from)
   ).nonce.toNumber();
+  console.log(nonce);
+
   if (nonce !== JSON.parse(signedTxHex).nonce) {
     return throwError(ERROR_BROADCAST_TRANSACTION);
   }
@@ -158,10 +162,11 @@ const constructionCombine = async (params) => {
 
   // Verify the message
   const signer = u8aToHex(decodeAddress(unsignedTxJSON.from));
+  console.log("signer", signer);
   const signatureU8a = hexToU8a(signatureHex);
   const { isValid } = signatureVerify(signingPayload, signatureU8a, signer);
   if (!isValid) {
-    throw new Error('Signature is not valid for signing payload');
+    throw new Error("Signature is not valid for signing payload");
   }
 
   // Re-construct extrinsic
@@ -177,10 +182,10 @@ const constructionCombine = async (params) => {
 
   // Ensure tx is balances.transfer
   if (
-    txInfo.method.name !== 'transfer'
-    || txInfo.method.pallet !== 'balances'
+    txInfo.method.name !== "transfer" ||
+    txInfo.method.pallet !== "balances"
   ) {
-    throw new Error('Extrinsic must be method transfer and pallet balances');
+    throw new Error("Extrinsic must be method transfer and pallet balances");
   }
 
   // Generate header byte
@@ -207,11 +212,18 @@ const constructionCombine = async (params) => {
  * returns ConstructionDeriveResponse
  * */
 const constructionDerive = async (params) => {
+  console.log(params);
   const { constructionDeriveRequest } = params;
-  const networkIdentifier = getNetworkIdentifierFromRequest(constructionDeriveRequest);
+  const networkIdentifier = getNetworkIdentifierFromRequest(
+    constructionDeriveRequest
+  );
   const publicKeyHex = `0x${constructionDeriveRequest.public_key.hex_bytes}`;
   const publicKeyType = constructionDeriveRequest.public_key.curve_type;
-  const address = await publicKeyToAddress(publicKeyHex, publicKeyType, networkIdentifier.properties.ss58Format);
+  const address = await publicKeyToAddress(
+    publicKeyHex,
+    publicKeyType,
+    networkIdentifier.properties.ss58Format
+  );
   return new Types.ConstructionDeriveResponse(address);
 };
 
@@ -256,14 +268,14 @@ const constructionParse = async (params) => {
   let destAccountAddress;
 
   // Parse transaction
-  if (transaction.substr(0, 2) === '0x') {
+  if (transaction.substr(0, 2) === "0x") {
     // Hex encoded extrinsic
     const polkaTx = registry.registry.createType(
-      'Extrinsic',
+      "Extrinsic",
       hexToU8a(transaction),
       {
         isSigned: true,
-      },
+      }
     );
 
     const transactionJSON = polkaTx.toHuman();
@@ -271,13 +283,10 @@ const constructionParse = async (params) => {
     destAccountAddress = transactionJSON.method.args[0];
     value = polkaTx.method.args[1].toString();
   } else {
-    const parsedTx = jsonToTx(
-      transaction,
-      {
-        metadataRpc: registry.metadata,
-        registry,
-      },
-    );
+    const parsedTx = jsonToTx(transaction, {
+      metadataRpc: registry.metadata,
+      registry,
+    });
 
     const parsedTxn = parsedTx.transaction;
     const txInfo = decode(parsedTxn, {
@@ -288,10 +297,10 @@ const constructionParse = async (params) => {
 
     // Ensure tx is balances.transfer
     if (
-      txInfo.method.name !== 'transfer'
-      || txInfo.method.pallet !== 'balances'
+      txInfo.method.name !== "transferKeepAlive" ||
+      txInfo.method.pallet !== "balances"
     ) {
-      throw new Error('Extrinsic must be method transfer and pallet balances');
+      throw new Error("Extrinsic must be method transfer and pallet balances");
     }
 
     sourceAccountAddress = txInfo.address;
@@ -300,21 +309,21 @@ const constructionParse = async (params) => {
   }
 
   // Ensure arguments are correct
-  if (!destAccountAddress || typeof value === 'undefined') {
-    throw new Error('Extrinsic is missing dest and value arguments');
+  if (!destAccountAddress || typeof value === "undefined") {
+    throw new Error("Extrinsic is missing dest and value arguments");
   }
 
   // Deconstruct transaction into operations
   const operations = [
     Types.Operation.constructFromObject({
       operation_identifier: new Types.OperationIdentifier(0),
-      type: 'Transfer',
+      type: "Transfer",
       account: new Types.AccountIdentifier(sourceAccountAddress),
       amount: new Types.Amount(new BN(value).neg().toString(), currency),
     }),
     Types.Operation.constructFromObject({
       operation_identifier: new Types.OperationIdentifier(1),
-      type: 'Transfer',
+      type: "Transfer",
       account: new Types.AccountIdentifier(destAccountAddress),
       amount: new Types.Amount(value.toString(), currency),
     }),
@@ -326,7 +335,7 @@ const constructionParse = async (params) => {
   // Create response
   const response = new Types.ConstructionParseResponse(operations, signers);
   response.account_identifier_signers = signers.map(
-    (signer) => new Types.AccountIdentifier(signer),
+    (signer) => new Types.AccountIdentifier(signer)
   );
   return response;
 };
@@ -345,19 +354,21 @@ const constructionPayloads = async (params) => {
 
   // Must have 2 operations, send and receive
   if (operations.length !== 2) {
-    throw new Error('Need atleast 2 transfer operations');
+    throw new Error("Need atleast 2 transfer operations");
   }
 
   // Sort by sender/reciever
-  const senderOperations = operations.filter((operation) => new BN(operation.amount.value).isNeg());
+  const senderOperations = operations.filter((operation) =>
+    new BN(operation.amount.value).isNeg()
+  );
   const receiverOperations = operations.filter(
-    (operation) => !new BN(operation.amount.value).isNeg(),
+    (operation) => !new BN(operation.amount.value).isNeg()
   );
 
   // Ensure we have correct amount of operations
   if (senderOperations.length !== 1 || receiverOperations.length !== 1) {
     throw new Error(
-      'Payloads require 1 sender and 1 receiver transfer operation',
+      "Payloads require 1 sender and 1 receiver transfer operation"
     );
   }
 
@@ -365,23 +376,49 @@ const constructionPayloads = async (params) => {
   const receiveOp = receiverOperations[0];
 
   // Support only transfer operation
-  if (sendOp.type !== 'Transfer' || receiveOp.type !== 'Transfer') {
-    throw new Error('Payload operations must be of type Transfer');
+  if (sendOp.type !== "Transfer" || receiveOp.type !== "Transfer") {
+    throw new Error("Payload operations must be of type Transfer");
   }
 
   const senderAddress = sendOp.account.address;
   const toAddress = receiveOp.account.address;
-  const {
-    nonce,
-    eraPeriod,
-    blockNumber,
-    blockHash,
-  } = constructionPayloadsRequest.metadata;
+  const { nonce, eraPeriod, blockNumber, blockHash } =
+    constructionPayloadsRequest.metadata;
 
   // Initialize the registry
+
+  const api = await getNetworkApiFromRequest(constructionPayloadsRequest);
+  const metadataRpc = await api.rpc.state.getMetadata();
+  const genesisHash = await api.rpc.chain.getBlockHash(0);
+  const { specVersion, transactionVersion } =
+    await api.rpc.state.getRuntimeVersion();
   const registry = getNetworkRegistryFromRequest(constructionPayloadsRequest);
 
   // Build the transfer txn
+  // const unsigned = methods.balances.transferKeepAlive(
+  //   {
+  //     value: receiveOp.amount.value,
+  //     dest: toAddress, // Bob
+  //   },
+  //   {
+  //     address: senderAddress,
+  //     blockHash,
+  //     blockNumber: blockNumber,
+  //     eraPeriod: 64,
+  //     genesisHash,
+  //     metadataRpc,
+  //     nonce,
+  //     specVersion,
+  //     tip: 0,
+  //     transactionVersion,
+  //   },
+  //   {
+  //     metadataRpc,
+  //     registry,
+  //     signedExtensions: SIGNED_EXTENSIONS,
+  //     userExtensions: API_EXTENSIONS,
+  //   }
+  // );
   const txParams = {
     from: senderAddress,
     to: toAddress,
@@ -398,29 +435,40 @@ const constructionPayloads = async (params) => {
     ...txParams,
     registry,
   });
-
-  const extrinsicPayload = registry.registry.createType(
-    'ExtrinsicPayload',
-    unsignedTxn,
-    {
-      version: EXTRINSIC_VERSION,
-    },
-  );
-
-  // With the `ExtrinsicPayload` class, construct the actual payload to sign.
-  const actualPayload = extrinsicPayload.toU8a({ method: true });
-  const signingPayload = u8aToHex(actualPayload);
-  const signatureType = 'ed25519';
+  console.log(registry.registry);
+  const signingPayload = registry._registry
+    .createType(
+      "ExtrinsicPayload",
+      { ...unsignedTxn, appId: 0 },
+      { version: EXTRINSIC_VERSION }
+    )
+    .toHex();
+  console.log(`\nPayload to Sign: ${signingPayload}`);
+  const signatureType = "ed25519";
+  // const actualPayload = extrinsicPayload.toU8a({ method: true });
+  // const signingPayload = u8aToHex(actualPayload);
 
   // Create an array of payloads that must be signed by the caller
-  const payloads = [{
-    address: senderAddress,
-    account_identifier: new Types.AccountIdentifier(senderAddress),
-    hex_bytes: signingPayload.substr(2),
-    signature_type: signatureType,
-  }];
+  const payloads = [
+    {
+      address: senderAddress,
+      account_identifier: new Types.AccountIdentifier(senderAddress),
+      hex_bytes: signingPayload.substring(2),
+      signature_type: signatureType,
+    },
+  ];
 
   const unsignedTransaction = JSON.stringify(txParams);
+  const keyring = new Keyring();
+  const alice = keyring.addFromUri("//Alice", { name: "Alice" }, "ed25519");
+  console.log("alice pub:", alice.address);
+  const { signature } = registry
+    .createType("ExtrinsicPayload", signingPayload, {
+      version: EXTRINSIC_VERSION,
+    })
+    .sign(alice);
+
+  console.log("signature:", signature);
   return new Types.ConstructionPayloadsResponse(unsignedTransaction, payloads);
 };
 
@@ -439,7 +487,9 @@ const constructionPreprocess = async (params) => {
   const { operations } = constructionPreprocessRequest;
 
   // Gather public keys needed for TXs
-  const requiredPublicKeys = operations.map((operation) => new Types.AccountIdentifier(operation.account.address));
+  const requiredPublicKeys = operations.map(
+    (operation) => new Types.AccountIdentifier(operation.account.address)
+  );
 
   const senderAddress = operations
     .filter((operation) => new BN(operation.amount.value).isNeg())
