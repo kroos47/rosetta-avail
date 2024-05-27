@@ -15,7 +15,29 @@
   "log_configuration": false,
   "compression_disabled": false,
   "memory_limit_disabled": false,
-  "construction": null,
+  "construction": {
+    "construction": {
+      "offline_url": "http://localhost:8080",
+      "max_offline_connections": 4,
+      "force_retry": false,
+      "stale_depth": 3,
+      "broadcast_limit": 5,
+      "ignore_broadcast_failures": false,
+      "clear_broadcasts": true,
+      "broadcast_behind_tip": false,
+      "block_broadcast_limit": false,
+      "rebroadcast_all": true,
+      "constructor_dsl_file": "./substrate.ros",
+      "status_port": 2079,
+      "results_output_file": "/construction_test_results",
+      "quiet": false,
+      "initial_balance_fetch_disabled": false,
+      "end_conditions": {
+        "create_account": 10,
+        "transfer": 20
+      }
+    }
+  },
   "data": {
     "active_reconciliation_concurrency": 16,
     "inactive_reconciliation_concurrency": 4,
@@ -25,7 +47,7 @@
     "log_balance_changes": false,
     "log_reconciliations": false,
     "ignore_reconciliation_error": false,
-    "exempt_accounts": "./devnode/exempt_accounts.json",
+    "exempt_accounts": "./exempt_accounts.json",
     "bootstrap_balances": "./bootstrap_balances.json",
     "interesting_accounts": "",
     "reconciliation_disabled": false,

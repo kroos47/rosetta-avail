@@ -7,5 +7,14 @@
       "symbol": "AVAIL",
       "decimals": 18
     }
+  },
+  {
+    "account_identifier": {
+      "address": "5EYCAe5ijiYfyeZ2JJCGq56LmPyNRAKzpG4QkoQkkQNB5e6Z"
+    },
+    "currency": {
+      "symbol": "AVAIL",
+      "decimals": 18
+    }
   }
 ]

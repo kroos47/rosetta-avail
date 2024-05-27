@@ -26,7 +26,7 @@ request_funds(1){
 
 create_account(1){
   create{
-    network = {"network":"Development Node", "blockchain":"Substrate"};
+    network = {"network":"Development Node", "blockchain":"Avail"};
     key = generate_key({"curve_type": "edwards25519"});
     account = derive({
       "network_identifier": {{network}},
@@ -43,7 +43,7 @@ create_account(1){
 
 transfer(1){
   transfer{
-    transfer.network = {"network":"Development Node", "blockchain":"Substrate"};
+    transfer.network = {"network":"Development Node", "blockchain":"Avail"};
     currency = {"symbol":"AVAIL", "decimals":18};
     sender = find_balance({
       "minimum_balance":{

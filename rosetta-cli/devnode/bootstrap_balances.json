@@ -7,7 +7,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -17,7 +17,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -27,7 +27,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -37,7 +37,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -47,7 +47,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -57,7 +57,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -67,7 +67,7 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   },
   {
     "account_identifier": {
@@ -77,6 +77,6 @@
       "symbol": "AVAIL",
       "decimals": 18
     },
-    "value": "1000000000000000000000000"
+    "value": "10000000000000000000000000"
   }
 ]
