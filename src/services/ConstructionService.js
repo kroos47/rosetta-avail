@@ -1,7 +1,12 @@
 import RosettaSDK from "rosetta-node-sdk";
 import BN from "bn.js";
 
-import { decode, getTxHash, deriveAddress } from "@substrate/txwrapper-core";
+import {
+  decode,
+  getTxHash,
+  deriveAddress,
+  construct,
+} from "@substrate/txwrapper-core";
 
 import { methods } from "../helpers/connections";
 import Registry from "../offline-signing/registry";
@@ -15,7 +20,6 @@ import { EXTRINSIC_VERSION } from "@polkadot/types/extrinsic/v4/Extrinsic";
 import { signWith } from "../helpers/connections";
 
 import { Keyring } from "@polkadot/api";
-
 import {
   ERROR_BROADCAST_TRANSACTION,
   throwError,
@@ -32,7 +36,8 @@ import {
 } from "../helpers/connections";
 
 import buildTransferTxn from "../offline-signing/txns";
-import { API_EXTENSIONS, SIGNED_EXTENSIONS } from "../../types";
+import { API_EXTENSIONS, API_TYPES, SIGNED_EXTENSIONS } from "../../types";
+import { U8 } from "@polkadot/types/primitive";
 
 const Types = RosettaSDK.Client;
 
@@ -52,7 +57,7 @@ function jsonToTx(transaction, options = {}) {
 
   const extrinsic = options.registry.registry.createType(
     "Extrinsic",
-    unsignedTxn,
+    { ...unsignedTxn, appId: 0 },
     { version: EXTRINSIC_VERSION, ...unsignedTxn }
   );
 
@@ -90,7 +95,7 @@ const constructionMetadata = async (params) => {
   const signingInfo = await api.derive.tx.signingInfo(options.from, nonce);
   const blockNumber = signingInfo.header.number.toNumber();
   const blockHash = await api.rpc.chain.getBlockHash(signingInfo.header.number);
-  const eraPeriod = signingInfo.mortalLength;
+  const eraPeriod = 64;
 
   // Format into metadata object
   return new Types.ConstructionMetadataResponse({
@@ -111,27 +116,10 @@ const constructionMetadata = async (params) => {
 const constructionSubmit = async (params) => {
   const { constructionSubmitRequest } = params;
   const api = await getNetworkApiFromRequest(constructionSubmitRequest);
-  const meta = await api.rpc.state.getMetadata();
   const signedTxHex = constructionSubmitRequest.signed_transaction;
 
-  const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
-  // const registry = getRegistry(meta.toHex());
-  const nonce = (
-    await api.query.system.account(JSON.parse(signedTxHex).from)
-  ).nonce.toNumber();
-  console.log(nonce);
-
-  if (nonce !== JSON.parse(signedTxHex).nonce) {
-    return throwError(ERROR_BROADCAST_TRANSACTION);
-  }
-
-  const { extrinsic } = jsonToTx(constructionSubmitRequest.signed_transaction, {
-    metadataRpc: registry.metadata,
-    registry,
-  });
-
   try {
-    const txHash = await api.rpc.author.submitExtrinsic(extrinsic.toHex());
+    const txHash = await api.rpc.author.submitExtrinsic(signedTxHex);
     return new Types.TransactionIdentifierResponse({
       hash: u8aToHex(txHash).substr(2),
     });
@@ -153,21 +141,14 @@ const constructionCombine = async (params) => {
   const registry = getNetworkRegistryFromRequest(constructionCombineRequest);
   const { signatures } = constructionCombineRequest;
   const unsignedTx = constructionCombineRequest.unsigned_transaction;
-  const unsignedTxJSON = JSON.parse(unsignedTx);
 
   // Get signature info
   const signatureType = signatures[0].signature_type.toLowerCase();
+  console.log(signatureType);
   const signatureHex = `0x${signatures[0].hex_bytes}`;
+  console.log(signatureHex);
   const signingPayload = `0x${signatures[0].signing_payload.hex_bytes}`;
-
-  // Verify the message
-  const signer = u8aToHex(decodeAddress(unsignedTxJSON.from));
-  console.log("signer", signer);
-  const signatureU8a = hexToU8a(signatureHex);
-  const { isValid } = signatureVerify(signingPayload, signatureU8a, signer);
-  if (!isValid) {
-    throw new Error("Signature is not valid for signing payload");
-  }
+  console.log(signingPayload);
 
   // Re-construct extrinsic
   const { transaction } = jsonToTx(unsignedTx, {
@@ -182,25 +163,19 @@ const constructionCombine = async (params) => {
 
   // Ensure tx is balances.transfer
   if (
-    txInfo.method.name !== "transfer" ||
+    txInfo.method.name !== "transferKeepAlive" ||
     txInfo.method.pallet !== "balances"
   ) {
     throw new Error("Extrinsic must be method transfer and pallet balances");
   }
-
-  // Generate header byte
-  const headerU8a = new Uint8Array(1);
-  headerU8a[0] = sigTypeEnum[signatureType] || 0;
-
-  // Append signature type header then create a signed transaction
-  const signatureWithHeader = u8aConcat(headerU8a, signatureU8a);
-  const signedTxJSON = JSON.stringify({
-    ...unsignedTxJSON,
-    signature: u8aToHex(signatureWithHeader),
-    signer: unsignedTxJSON.from,
+  const tx = construct.signedTx(unsignedTxn, signatureHex, {
+    metadataRpc: registry.metadata,
+    registry: registry.registry,
+    signedExtensions: SIGNED_EXTENSIONS,
+    userExtensions: API_EXTENSIONS,
   });
-
-  return new Types.ConstructionCombineResponse(signedTxJSON);
+  console.log("tx:", tx);
+  return new Types.ConstructionCombineResponse(tx);
 };
 
 /**
@@ -387,38 +362,7 @@ const constructionPayloads = async (params) => {
 
   // Initialize the registry
 
-  const api = await getNetworkApiFromRequest(constructionPayloadsRequest);
-  const metadataRpc = await api.rpc.state.getMetadata();
-  const genesisHash = await api.rpc.chain.getBlockHash(0);
-  const { specVersion, transactionVersion } =
-    await api.rpc.state.getRuntimeVersion();
   const registry = getNetworkRegistryFromRequest(constructionPayloadsRequest);
-
-  // Build the transfer txn
-  // const unsigned = methods.balances.transferKeepAlive(
-  //   {
-  //     value: receiveOp.amount.value,
-  //     dest: toAddress, // Bob
-  //   },
-  //   {
-  //     address: senderAddress,
-  //     blockHash,
-  //     blockNumber: blockNumber,
-  //     eraPeriod: 64,
-  //     genesisHash,
-  //     metadataRpc,
-  //     nonce,
-  //     specVersion,
-  //     tip: 0,
-  //     transactionVersion,
-  //   },
-  //   {
-  //     metadataRpc,
-  //     registry,
-  //     signedExtensions: SIGNED_EXTENSIONS,
-  //     userExtensions: API_EXTENSIONS,
-  //   }
-  // );
   const txParams = {
     from: senderAddress,
     to: toAddress,
@@ -435,7 +379,6 @@ const constructionPayloads = async (params) => {
     ...txParams,
     registry,
   });
-  console.log(registry.registry);
   const signingPayload = registry._registry
     .createType(
       "ExtrinsicPayload",
@@ -444,6 +387,7 @@ const constructionPayloads = async (params) => {
     )
     .toHex();
   console.log(`\nPayload to Sign: ${signingPayload}`);
+
   const signatureType = "ed25519";
   // const actualPayload = extrinsicPayload.toU8a({ method: true });
   // const signingPayload = u8aToHex(actualPayload);
@@ -467,8 +411,16 @@ const constructionPayloads = async (params) => {
       version: EXTRINSIC_VERSION,
     })
     .sign(alice);
-
+  console.log("tx:");
   console.log("signature:", signature);
+  // const registry1 = getRegistry(metadataRpc);
+  const tx = construct.signedTx(unsignedTxn, signature, {
+    metadataRpc: registry.metadata,
+    registry: registry.registry,
+    signedExtensions: SIGNED_EXTENSIONS,
+    userExtensions: API_EXTENSIONS,
+  });
+  console.log("tx:", tx);
   return new Types.ConstructionPayloadsResponse(unsignedTransaction, payloads);
 };
 

@@ -15,11 +15,11 @@ module.exports = {
       treasury: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
     },
   },
-  genesis: "0xb4073ef63d06cb72c56527f8f53e9584c52b86ef9983321f909869800c95e3d8",
+  genesis: "0xe13c0df4497afb9ddb196617b45bcc99d45ccdac3b1cd185ebb3507b37e02ee4",
   name: "Development",
   specName: "avail",
   // Next 2 fields need to change whenever they change on the chain.
-  specVersion: 30,
+  specVersion: 31,
   transactionVersion: 1,
   types,
   metadataRpc: metadata.metadataRpc,

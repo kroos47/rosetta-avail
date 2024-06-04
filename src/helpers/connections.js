@@ -6,7 +6,7 @@ import {
   API_TYPES,
   SIGNED_EXTENSIONS,
 } from "../../types";
-import { getRegistryBase } from "@substrate/txwrapper-core";
+// import { getRegistryBase } from "@substrate/txwrapper-core";
 import { methods as substrateMethods } from "@substrate/txwrapper-substrate";
 
 import networkIdentifiers from "../network";
@@ -104,32 +104,29 @@ export async function getNetworkConnection(networkIdentifier) {
   return connections[nodeAddress];
 }
 
-export function getRegistry(metadataRpc) {
-  const registry = getRegistryBase({
-    chainProperties: {
-      ss58Format: 42,
-      tokenDecimals: 18,
-      tokenSymbol: "AVAIL", // For Goldberg, use 'AVL'.
-    },
-    specTypes: API_TYPES, // For Goldberg network, import and use 'goldbergTypes' from avail-js-sdk.
-    metadataRpc: metadataRpc,
-  });
-  registry.setSignedExtensions(SIGNED_EXTENSIONS, API_EXTENSIONS);
-  return registry;
-}
+// export function getRegistry(metadataRpc) {
+//   const registry = getRegistryBase({
+//     chainProperties: {
+//       ss58Format: 42,
+//       tokenDecimals: 18,
+//       tokenSymbol: "AVAIL", // For Goldberg, use 'AVL'.
+//     },
+//     specTypes: API_TYPES, // For Goldberg network, import and use 'goldbergTypes' from avail-js-sdk.
+//     metadataRpc: metadataRpc,
+//   });
+//   registry.setSignedExtensions(SIGNED_EXTENSIONS, API_EXTENSIONS);
+//   return registry;
+// }
 
 export function getNetworkRegistryFromRequest(networkRequest) {
   const targetNetworkIdentifier =
     networkRequest.network_identifier || networkIdentifiers[0];
   const networkIdentifier = getNetworkIdentifier(targetNetworkIdentifier);
-  const { nodeAddress } = networkIdentifier;
   let registry = new Registry({
     chainInfo: networkIdentifier,
     types: networkIdentifier.types,
     metadata: networkIdentifier.metadataRpc,
   });
-  console.log("testing");
-
   return registry;
 }
 

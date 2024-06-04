@@ -11,6 +11,16 @@
   },
   {
     "account_identifier": {
+      "address": "5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu"
+    },
+    "currency": {
+      "symbol": "AVAIL",
+      "decimals": 18
+    },
+    "value": "10000000000000000000000000"
+  },
+  {
+    "account_identifier": {
       "address": "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY"
     },
     "currency": {
@@ -80,3 +90,5 @@
     "value": "10000000000000000000000000"
   }
 ]
+
+
